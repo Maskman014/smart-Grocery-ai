@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface HistoryItem {
   id: number;
@@ -18,6 +19,7 @@ export const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -154,7 +156,11 @@ export const History: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-700">
               {history.map((item: any) => (
-                <tr key={item.id} className="hover:bg-gray-700/50 transition-colors">
+                <tr 
+                  key={item.id} 
+                  onClick={() => navigate(`/list/${item.id}`)}
+                  className="hover:bg-gray-700/50 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-4 text-gray-300">{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-gray-300">{item.parsed_items.length} items</td>
                   <td className="px-6 py-4">

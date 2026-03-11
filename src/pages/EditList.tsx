@@ -113,6 +113,7 @@ export const EditList: React.FC = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          id: location.state?.listId,
           raw_text: text, // Use the constructed text from current items
           parsed_items: items,
           total_estimated_cost: totalCost,

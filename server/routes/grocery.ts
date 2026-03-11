@@ -26,24 +26,43 @@ router.post('/analyze-list', authenticateToken, (req: AuthRequest, res) => {
 
 router.post('/save-list', authenticateToken, (req: AuthRequest, res) => {
   try {
-    const { raw_text, parsed_items, total_estimated_cost, recommended_store, confidence_score, explanation_text, status } = req.body;
+    const { id, raw_text, parsed_items, total_estimated_cost, recommended_store, confidence_score, explanation_text, status } = req.body;
 
-    // Save to DB
-    const stmt = db.prepare(`
-      INSERT INTO grocery_lists (user_id, raw_text, parsed_items, total_cost, store_recommendation, confidence_score, explanation, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      req.user!.id,
-      raw_text || '',
-      JSON.stringify(parsed_items),
-      total_estimated_cost,
-      recommended_store,
-      confidence_score,
-      explanation_text,
-      status || 'saved'
-    );
+    if (id) {
+      // Update existing list
+      const stmt = db.prepare(`
+        UPDATE grocery_lists 
+        SET raw_text = ?, parsed_items = ?, total_cost = ?, store_recommendation = ?, confidence_score = ?, explanation = ?, status = ?
+        WHERE id = ? AND user_id = ?
+      `);
+      stmt.run(
+        raw_text || '',
+        JSON.stringify(parsed_items),
+        total_estimated_cost,
+        recommended_store,
+        confidence_score,
+        explanation_text,
+        status || 'saved',
+        id,
+        req.user!.id
+      );
+    } else {
+      // Save new list
+      const stmt = db.prepare(`
+        INSERT INTO grocery_lists (user_id, raw_text, parsed_items, total_cost, store_recommendation, confidence_score, explanation, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        req.user!.id,
+        raw_text || '',
+        JSON.stringify(parsed_items),
+        total_estimated_cost,
+        recommended_store,
+        confidence_score,
+        explanation_text,
+        status || 'saved'
+      );
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -66,6 +85,25 @@ router.get('/grocery-history', authenticateToken, (req: AuthRequest, res) => {
     res.json(history);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+router.get('/list/:id', authenticateToken, (req: AuthRequest, res) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM grocery_lists WHERE id = ? AND user_id = ?');
+    const row = stmt.get(req.params.id, req.user!.id) as any;
+    
+    if (!row) {
+      return res.status(404).json({ error: 'List not found' });
+    }
+
+    res.json({
+      ...row,
+      recommended_store: row.store_recommendation,
+      parsed_items: JSON.parse(row.parsed_items)
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch list details' });
   }
 });
 

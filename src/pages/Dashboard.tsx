@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ShoppingCart, CheckCircle, AlertCircle, Loader2, Plus, Trash2, Save, History, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
 
 interface ParsedItem {
@@ -34,6 +34,13 @@ export const Dashboard: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const { token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.rawText) {
+      setRawText(location.state.rawText);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -244,7 +251,7 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-4">
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity) => (
-                  <div key={activity.id} className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 hover:border-gray-600 transition-all cursor-pointer group" onClick={() => navigate('/history')}>
+                  <div key={activity.id} className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 hover:border-gray-600 transition-all cursor-pointer group" onClick={() => navigate(`/list/${activity.id}`)}>
                     <div className="flex justify-between items-start mb-2">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tighter border ${
                         activity.status === 'ordered' 

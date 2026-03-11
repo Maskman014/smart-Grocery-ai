@@ -7,17 +7,26 @@ export const Payment: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { token } = useAuth();
-  const { items, total, store, raw_text, explanation } = location.state || { items: [], total: 0, store: 'Unknown Store', raw_text: '', explanation: '' };
+  const { id, items, total, store, raw_text, explanation } = location.state || { id: undefined, items: [], total: 0, store: 'Unknown Store', raw_text: '', explanation: '' };
 
   const [method, setMethod] = useState<'upi' | 'card' | 'netbanking' | 'cod'>('upi');
   const [address, setAddress] = useState({ street: '', city: '', pincode: '' });
+  const [paymentDetails, setPaymentDetails] = useState({ upiId: '', cardNumber: '', expiry: '', cvv: '', bank: '' });
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const isAddressValid = address.street.trim() !== '' && address.city.trim() !== '' && address.pincode.trim().length >= 6;
+  
+  const isPaymentValid = () => {
+    if (method === 'cod') return true;
+    if (method === 'upi') return paymentDetails.upiId.includes('@');
+    if (method === 'card') return paymentDetails.cardNumber.length >= 16 && paymentDetails.expiry.length >= 5 && paymentDetails.cvv.length >= 3;
+    if (method === 'netbanking') return paymentDetails.bank !== '';
+    return false;
+  };
 
   const handlePayment = async () => {
-    if (!isAddressValid) return;
+    if (!isAddressValid || !isPaymentValid()) return;
     setProcessing(true);
     
     try {
@@ -32,6 +41,7 @@ export const Payment: React.FC = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          id,
           raw_text: raw_text || '',
           parsed_items: items,
           total_estimated_cost: total,
@@ -139,41 +149,96 @@ export const Payment: React.FC = () => {
             <h3 className="text-xl font-bold text-white mb-6">Select Payment Method</h3>
             
             <div className="space-y-4">
-              <button
-                onClick={() => setMethod('upi')}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  method === 'upi' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${method === 'upi' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                    <Smartphone className="w-6 h-6" />
+              <div className="space-y-2">
+                <button
+                  onClick={() => setMethod('upi')}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+                    method === 'upi' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${method === 'upi' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                      <Smartphone className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-white">UPI (GPay, PhonePe, Paytm)</div>
+                      <div className="text-xs text-gray-500">Pay directly from your bank account</div>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <div className="font-bold text-white">UPI (GPay, PhonePe, Paytm)</div>
-                    <div className="text-xs text-gray-500">Pay directly from your bank account</div>
+                  {method === 'upi' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
+                </button>
+                {method === 'upi' && (
+                  <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 mt-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Enter UPI ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. username@upi"
+                      value={paymentDetails.upiId}
+                      onChange={(e) => setPaymentDetails({ ...paymentDetails, upiId: e.target.value })}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                    />
                   </div>
-                </div>
-                {method === 'upi' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
-              </button>
+                )}
+              </div>
 
-              <button
-                onClick={() => setMethod('card')}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  method === 'card' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${method === 'card' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                    <CreditCard className="w-6 h-6" />
+              <div className="space-y-2">
+                <button
+                  onClick={() => setMethod('card')}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+                    method === 'card' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${method === 'card' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                      <CreditCard className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-white">Credit / Debit Card</div>
+                      <div className="text-xs text-gray-500">Visa, Mastercard, RuPay supported</div>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <div className="font-bold text-white">Credit / Debit Card</div>
-                    <div className="text-xs text-gray-500">Visa, Mastercard, RuPay supported</div>
+                  {method === 'card' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
+                </button>
+                {method === 'card' && (
+                  <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 mt-2 space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Card Number</label>
+                      <input
+                        type="text"
+                        placeholder="0000 0000 0000 0000"
+                        maxLength={16}
+                        value={paymentDetails.cardNumber}
+                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: e.target.value.replace(/\D/g, '') })}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Expiry (MM/YY)</label>
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          value={paymentDetails.expiry}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, expiry: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">CVV</label>
+                        <input
+                          type="password"
+                          placeholder="123"
+                          maxLength={4}
+                          value={paymentDetails.cvv}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, cvv: e.target.value.replace(/\D/g, '') })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                {method === 'card' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
-              </button>
+                )}
+              </div>
 
               <button
                 onClick={() => setMethod('cod')}
@@ -193,23 +258,42 @@ export const Payment: React.FC = () => {
                 {method === 'cod' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
               </button>
 
-              <button
-                onClick={() => setMethod('netbanking')}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  method === 'netbanking' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${method === 'netbanking' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
-                    <Building2 className="w-6 h-6" />
+              <div className="space-y-2">
+                <button
+                  onClick={() => setMethod('netbanking')}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+                    method === 'netbanking' ? 'border-emerald-500 bg-emerald-500/5' : 'border-gray-700 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${method === 'netbanking' ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                      <Building2 className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-white">Net Banking</div>
+                      <div className="text-xs text-gray-500">All major Indian banks available</div>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <div className="font-bold text-white">Net Banking</div>
-                    <div className="text-xs text-gray-500">All major Indian banks available</div>
+                  {method === 'netbanking' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
+                </button>
+                {method === 'netbanking' && (
+                  <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 mt-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Select Bank</label>
+                    <select
+                      value={paymentDetails.bank}
+                      onChange={(e) => setPaymentDetails({ ...paymentDetails, bank: e.target.value })}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                    >
+                      <option value="">Select a bank...</option>
+                      <option value="sbi">State Bank of India</option>
+                      <option value="hdfc">HDFC Bank</option>
+                      <option value="icici">ICICI Bank</option>
+                      <option value="axis">Axis Bank</option>
+                      <option value="kotak">Kotak Mahindra Bank</option>
+                    </select>
                   </div>
-                </div>
-                {method === 'netbanking' && <div className="w-4 h-4 rounded-full bg-emerald-500" />}
-              </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -252,7 +336,7 @@ export const Payment: React.FC = () => {
               <div className="text-xs text-gray-500 mb-4 text-center">Ordering from <span className="text-emerald-400 font-bold">{store}</span></div>
               <button
                 onClick={handlePayment}
-                disabled={processing || !isAddressValid}
+                disabled={processing || !isAddressValid || !isPaymentValid()}
                 className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
               >
                 {processing ? (
@@ -266,6 +350,9 @@ export const Payment: React.FC = () => {
               </button>
               {!isAddressValid && (
                 <p className="text-[10px] text-red-400 mt-2 text-center">Please fill in your delivery address to proceed</p>
+              )}
+              {isAddressValid && !isPaymentValid() && (
+                <p className="text-[10px] text-red-400 mt-2 text-center">Please fill in your payment details to proceed</p>
               )}
             </div>
           </div>
